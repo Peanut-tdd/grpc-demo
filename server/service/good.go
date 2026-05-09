@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/pbuser/genproto/common"
 	pb "github.com/pbuser/genproto/user"
+	"github.com/pbuser/server/middleware"
 )
 
 type GoodService struct {
@@ -34,7 +35,7 @@ func (g *GoodService) CreateGood(ctx context.Context, in *common.CreateGoodReq) 
 		price = val
 	}
 
-	return &common.CreateGoodResp{
+	resp := &common.CreateGoodResp{
 		Result: map[string]string{
 			"name":  name,
 			"sku":   sku,
@@ -42,6 +43,10 @@ func (g *GoodService) CreateGood(ctx context.Context, in *common.CreateGoodReq) 
 		},
 		Code: "200",
 		Tags: tags,
-	}, nil
+	}
+
+	middleware.CtxInfof(ctx, "create good service result:%v", resp)
+
+	return resp, nil
 
 }

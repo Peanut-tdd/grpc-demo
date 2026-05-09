@@ -1,7 +1,7 @@
 package service
 
 import (
-	"fmt"
+	"github.com/pbuser/server/middleware"
 	"io"
 	"strconv"
 
@@ -18,6 +18,14 @@ func NewBothStreamServer() *BothStreamServer {
 }
 
 func (c *BothStreamServer) Conversations(srv pb.Stream_ConversationsServer) error {
+
+	user, err := middleware.GetUserInfo(srv.Context())
+	if err != nil {
+		return err
+	}
+
+	middleware.CtxInfof(srv.Context(), "user info:%v", user)
+
 	n := 1
 	for {
 		req, err := srv.Recv()
@@ -34,9 +42,8 @@ func (c *BothStreamServer) Conversations(srv pb.Stream_ConversationsServer) erro
 		if err != nil {
 			return err
 		}
-
 		n++
 
-		fmt.Printf("conversations result: %s\n", req.Question)
+		//middleware.CtxInfof(srv.Context(), "conversations result: %s", req.Question)
 	}
 }

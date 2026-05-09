@@ -1,23 +1,24 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
-	"github.com/pbuser/server/middleware"
-	"github.com/pbuser/server/service"
 	"log"
 	"net"
 	"time"
 
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
+	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	pb "github.com/pbuser/genproto/user"
+	"github.com/pbuser/server/middleware"
+	"github.com/pbuser/server/service"
 	"google.golang.org/grpc"
 )
 
 const (
-	Addr    = ":8080"
-	NetWork = "tcp"
+	Addr           = ":8080"
+	NetWork        = "tcp"
+	DefaultTimeout = 5 * time.Second
 )
 
 func main() {
@@ -28,12 +29,23 @@ func main() {
 	}
 
 	defer lister.Close()
+	defer middleware.CloseLogger()
 
 	fmt.Println("server lister is ", lister.Addr())
 
-	grpcServer := grpc.NewServer(grpc.StreamInterceptor(
-		grpc_middleware.ChainStreamServer(grpc_auth.StreamServerInterceptor(middleware.AuthInterceptor))),
-		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(grpc_auth.UnaryServerInterceptor(middleware.AuthInterceptor))))
+	//拦截器，可注册日志，授权认证
+	grpcServer := grpc.NewServer(
+		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
+			middleware.TimeoutStreamInterceptor(DefaultTimeout),
+			grpc_auth.StreamServerInterceptor(middleware.AuthInterceptor),
+			grpc_zap.StreamServerInterceptor(middleware.ZapInterceptor()),
+		)),
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			middleware.TimeoutUnaryInterceptor(DefaultTimeout),
+			grpc_auth.UnaryServerInterceptor(middleware.AuthInterceptor),
+			grpc_zap.UnaryServerInterceptor(middleware.ZapInterceptor()),
+		)),
+	)
 
 	pb.RegisterUserServiceServer(grpcServer, service.NewUserService())
 	pb.RegisterStreamServiceServer(grpcServer, service.NewStreamService())
@@ -45,65 +57,5 @@ func main() {
 	err = grpcServer.Serve(lister)
 	if err != nil {
 		log.Fatalf("grpcServer.Serve err: %v", err)
-	}
-}
-
-func TimeoutStreamInterceptor(timeout time.Duration) grpc.StreamServerInterceptor {
-
-	return func(
-		srv interface{},
-		ss grpc.ServerStream,
-		info *grpc.StreamServerInfo,
-		handler grpc.StreamHandler,
-	) error {
-		ctx := ss.Context()
-
-		// 如果客户端已经设置了 deadline，则不再覆盖
-		if _, ok := ctx.Deadline(); ok {
-			return handler(srv, ss)
-		}
-
-		// 设置服务端默认超时
-		ctx, cancel := context.WithTimeout(ctx, timeout)
-		defer cancel()
-
-		// 包装 ServerStream，注入新的 context
-		wrapped := &wrappedServerStream{
-			ServerStream: ss,
-			ctx:          ctx,
-		}
-
-		return handler(srv, wrapped)
-	}
-}
-
-// 包装 ServerStream
-type wrappedServerStream struct {
-	grpc.ServerStream
-	ctx context.Context
-}
-
-func (w *wrappedServerStream) Context() context.Context {
-	return w.ctx
-}
-
-func TimeoutUnaryInterceptor(timeout time.Duration) grpc.UnaryServerInterceptor {
-	return func(
-		ctx context.Context,
-		req interface{},
-		info *grpc.UnaryServerInfo,
-		handler grpc.UnaryHandler,
-	) (interface{}, error) {
-
-		// 如果客户端已经设置了 deadline，就不覆盖
-		if _, ok := ctx.Deadline(); ok {
-			return handler(ctx, req)
-		}
-
-		// 设置服务端默认超时
-		ctx, cancel := context.WithTimeout(ctx, timeout)
-		defer cancel()
-
-		return handler(ctx, req)
 	}
 }
