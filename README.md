@@ -215,5 +215,14 @@ grpcui -plaintext  -H "authorization: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ
 
 
 
+#### postman带auth token调试
+
+![img_10.png](img/img_10.png)
+
+
+
+
+
+
 
 
