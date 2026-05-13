@@ -224,5 +224,68 @@ grpcui -plaintext  -H "authorization: bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ
 
 
 
+#### ghz压测
+
+
+
+进入项目目录，执行压测命令
+```aiignore
+ghz \
+  --proto=proto/user/user.proto \
+  -i proto \
+  --call=user.UserService/CreateUser \
+  --insecure \
+  -d '{"name":"tdd","phone":"123456789","address":"asdf","email":"2578741722@qq.com","passwd":"123"}' \
+  -m '{"authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMjMsInVzZXJfbmFtZSI6ImFkbWluIiwiZXhwIjoxNzc4NjcwMDA1LCJpYXQiOjE3Nzg2NjgyMDV9.PL5JqM3zwdbGRnQU_Cgwbqw3Lee8wP2PFhj_BXT6i7U"}'\
+  -c 1000 \
+  -n 100000 \
+  -t 30s \
+  127.0.0.1:8080
+
+```
+
+
+
+压测结果
+```aiignore
+Summary:
+  Count:        100000
+  Total:        4.23 s
+  Slowest:      248.33 ms
+  Fastest:      0.20 ms
+  Average:      33.56 ms                #平均响应时长RT
+  Requests/sec: 23665.71               #QPS
+
+Response time histogram:            #响应分布
+  0.198   [1]     |
+  25.011  [27773] |∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎
+  49.825  [62088] |∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎∎
+  74.638  [7593]  |∎∎∎∎∎
+  99.452  [1612]  |∎
+  124.265 [848]   |∎
+  149.079 [72]    |
+  173.893 [10]    |
+  198.706 [1]     |
+  223.520 [1]     |
+  248.333 [1]     |
+
+Latency distribution:
+  10 % in 15.62 ms 
+  25 % in 23.86 ms 
+  50 % in 32.61 ms 
+  75 % in 40.97 ms 
+  90 % in 49.98 ms 
+  95 % in 58.99 ms 
+  99 % in 97.68 ms 
+
+Status code distribution:
+  [OK]   100000 responses 
+```
+
+
+
+
+
+
 
 
